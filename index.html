@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Jal Kavach | Community Health Monitoring — NE India</title>
+<meta name="description" content="Smart community health monitoring and early warning system for water-borne diseases in rural Northeast India.">
+<meta name="theme-color" content="#0a3d62">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap');
+  :root{
+    --deep:#04121a; --navy:#0a2e42; --navy2:#0e3b56; --teal:#0f9d8f; --teal2:#12b8a6;
+    --leaf:#7cb342; --leaf2:#9ccc4f; --amber:#d97706; --red:#dc2626; --green:#15803d;
+  }
+  body{ font-family:'Inter',sans-serif; }
+  .font-display{ font-family:'Manrope',sans-serif; }
+  .brand-gradient{ background:linear-gradient(120deg,var(--teal) 0%,var(--teal2) 45%,var(--leaf) 100%); }
+  .brand-text-gradient{ background:linear-gradient(120deg,#3bc9db,#7cb342); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .bg-app{ background:radial-gradient(1200px 600px at 10% -10%, #0e3b56 0%, #04121a 55%), #04121a; }
+  .glass{ background:rgba(255,255,255,0.04); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); }
+  .glass-light{ background:rgba(255,255,255,0.9); backdrop-filter:blur(10px); }
+  .card{ background:#ffffff; border:1px solid #e6ebf0; border-radius:16px; }
+  .card-dark{ background:#0c2b3f; border:1px solid rgba(255,255,255,0.08); border-radius:16px; }
+  ::-webkit-scrollbar{ width:7px; height:7px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:#94a3b8; border-radius:4px; }
+  .fade-in{ animation:fadeIn .35s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .pulse-dot{ animation:pulseDot 1.8s infinite; }
+  @keyframes pulseDot{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  .nav-item{ transition:all .15s ease; }
+  .nav-item.active{ background:linear-gradient(90deg,rgba(15,157,143,.25),rgba(124,179,66,.12)); border-left:3px solid var(--teal2); color:#fff; }
+  .nav-item:not(.active):hover{ background:rgba(255,255,255,0.06); }
+  .risk-healthy{ background:linear-gradient(135deg,#15803d,#22c55e); }
+  .risk-moderate{ background:linear-gradient(135deg,#b45309,#f59e0b); }
+  .risk-high{ background:linear-gradient(135deg,#991b1b,#ef4444); }
+  .badge{ font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; display:inline-block; }
+  .th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:#64748b; font-weight:700; padding:10px 12px; }
+  .td{ padding:10px 12px; font-size:13.5px; border-top:1px solid #eef1f4; }
+  input,select,textarea{ font-size:14px; }
+  .input{ width:100%; padding:9px 12px; border-radius:10px; border:1px solid #dbe2e8; outline:none; background:#fff; }
+  .input:focus{ border-color:#0f9d8f; box-shadow:0 0 0 3px rgba(15,157,143,.15); }
+  .btn{ display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:13.5px; padding:9px 16px; border-radius:10px; transition:.15s; cursor:pointer; }
+  .btn-primary{ background:linear-gradient(120deg,#0f9d8f,#12b8a6); color:#fff; }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-outline{ border:1px solid #dbe2e8; color:#334155; background:#fff; }
+  .btn-outline:hover{ background:#f8fafc; }
+  .btn-danger{ background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+  .btn-danger:hover{ background:#fee2e2; }
+  .btn-sm{ padding:6px 11px; font-size:12.5px; }
+  .modal-backdrop{ background:rgba(4,18,26,.6); backdrop-filter:blur(3px); }
+  .chip{ padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid #dbe2e8; }
+  .chip.on{ background:#0f9d8f; color:#fff; border-color:#0f9d8f; }
+  .leaflet-popup-content-wrapper{ border-radius:12px; }
+  #sidebar::-webkit-scrollbar{ width:5px; }
+  .kbd-focus:focus-visible{ outline:2px solid #12b8a6; outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body class="bg-app min-h-screen text-slate-800">
+
+<!-- ================= OFFLINE BANNER ================= -->
+<div id="offlineBanner" class="hidden fixed top-0 inset-x-0 z-[60] bg-amber-500 text-white text-xs font-semibold text-center py-1.5">
+  <i class="fas fa-wifi-slash mr-1"></i> You're offline — showing cached data. Changes will sync when you're back online.
+</div>
+
+<!-- ================= AUTH SCREEN ================= -->
+<div id="authScreen" class="min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-7">
+      <img src="icons/icon-128.png" alt="Jal Kavach" class="w-20 h-20 mx-auto rounded-2xl shadow-2xl shadow-teal-900/40 mb-4">
+      <h1 class="font-display text-3xl font-extrabold brand-text-gradient">JAL KAVACH</h1>
+      <p class="text-slate-300 text-xs mt-1 tracking-wide uppercase">Protecting people from unsafe water</p>
+    </div>
+
+    <div class="glass rounded-2xl shadow-2xl p-7">
+      <!-- First-run setup -->
+      <div id="setupWrap" class="hidden">
+        <div class="mb-5">
+          <h2 class="text-white font-bold text-lg">Create the first Admin account</h2>
+          <p class="text-slate-300 text-xs mt-1">No users exist yet. Set up the administrator account to get started — you'll add ASHA and Rapid Response users afterwards from the Users panel.</p>
+        </div>
+        <form id="setupForm" class="space-y-3" onsubmit="return handleSetupAdmin(event)">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+            <input id="setupName" required class="input" placeholder="e.g. Dr. Anjali Baruah">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Login ID (phone or email)</label>
+            <input id="setupLoginId" required class="input" placeholder="e.g. admin@jalkavach.org">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+            <input id="setupPass" type="password" required minlength="4" class="input" placeholder="Minimum 4 characters">
+          </div>
+          <button type="submit" class="btn btn-primary w-full justify-center py-2.5">Create Admin Account <i class="fas fa-arrow-right"></i></button>
+          <p class="text-[11px] text-amber-300/90 text-center pt-1"><i class="fas fa-triangle-exclamation mr-1"></i>Testing mode: passwords are stored as plain text in Firestore. Do not use real personal passwords.</p>
+        </form>
+      </div>
+
+      <!-- Login -->
+      <div id="loginWrap">
+        <div class="mb-5 text-center">
+          <h2 class="text-white font-bold text-lg">Sign in</h2>
+          <p class="text-slate-300 text-xs mt-1">ASHA workers, District Admins &amp; Rapid Response teams</p>
+        </div>
+        <form id="loginForm" class="space-y-3" onsubmit="return handleLogin(event)">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Login ID (phone or email)</label>
+            <input id="loginId" required class="input" placeholder="Enter phone or email">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+            <input id="loginPass" type="password" required class="input" placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary w-full justify-center py-2.5">Sign In <i class="fas fa-arrow-right-to-bracket"></i></button>
+        </form>
+        <p id="loginError" class="hidden text-xs text-red-300 text-center mt-3"></p>
+        <p class="text-[11px] text-slate-400 text-center mt-4">Accounts are created by your District Admin. Contact them if you don't have login details.</p>
+      </div>
+
+      <div id="authLoading" class="text-center py-6">
+        <i class="fas fa-circle-notch fa-spin text-teal-400 text-2xl"></i>
+        <p class="text-slate-300 text-xs mt-2">Connecting…</p>
+      </div>
+    </div>
+    <p class="text-center text-slate-500 text-[11px] mt-5">Jal Kavach · Smart Community Health Monitoring · Northeast India</p>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div id="appScreen" class="hidden min-h-screen">
+  <div class="flex min-h-screen">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="hidden lg:flex flex-col w-64 shrink-0 bg-[#04121a] border-r border-white/10 h-screen sticky top-0 overflow-y-auto">
+      <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+        <img src="icons/icon-128.png" class="w-9 h-9 rounded-lg" alt="logo">
+        <div>
+          <p class="font-display font-extrabold text-white leading-tight text-[15px]">JAL KAVACH</p>
+          <p class="text-[10px] text-slate-400 uppercase tracking-wide">NE India</p>
+        </div>
+      </div>
+      <nav id="navList" class="flex-1 py-3 px-2 space-y-1"></nav>
+      <div class="px-4 py-4 border-t border-white/10">
+        <button onclick="promptInstall()" id="installBtn" class="hidden btn btn-outline w-full justify-center border-white/20 text-slate-200 bg-white/5 hover:bg-white/10 mb-2 btn-sm"><i class="fas fa-download"></i> Install App</button>
+        <div class="flex items-center gap-2 text-[11px] text-slate-400">
+          <span id="connDot" class="w-2 h-2 rounded-full bg-green-400 pulse-dot"></span>
+          <span id="connText">Online</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile sidebar drawer -->
+    <div id="mobileNavBackdrop" class="hidden fixed inset-0 bg-black/50 z-40 lg:hidden" onclick="toggleMobileNav(false)"></div>
+    <aside id="mobileSidebar" class="hidden fixed z-50 top-0 left-0 h-full w-72 bg-[#04121a] border-r border-white/10 flex-col overflow-y-auto lg:hidden">
+      <div class="flex items-center justify-between px-5 py-5 border-b border-white/10">
+        <div class="flex items-center gap-3">
+          <img src="icons/icon-128.png" class="w-9 h-9 rounded-lg" alt="logo">
+          <p class="font-display font-extrabold text-white text-[15px]">JAL KAVACH</p>
+        </div>
+        <button onclick="toggleMobileNav(false)" class="text-slate-400"><i class="fas fa-xmark"></i></button>
+      </div>
+      <nav id="navListMobile" class="flex-1 py-3 px-2 space-y-1"></nav>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="flex-1 min-w-0 flex flex-col">
+      <!-- TOPBAR -->
+      <header class="glass-light border-b border-slate-200 sticky top-0 z-30">
+        <div class="px-4 lg:px-7 py-3 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <button onclick="toggleMobileNav(true)" class="lg:hidden text-slate-600 p-2"><i class="fas fa-bars"></i></button>
+            <div class="min-w-0">
+              <h1 id="pageTitle" class="font-display font-extrabold text-slate-800 text-lg leading-tight truncate">Dashboard</h1>
+              <p id="pageSubtitle" class="text-xs text-slate-500 truncate">—</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 lg:gap-3 shrink-0">
+            <button onclick="showSection('alerts')" class="relative p-2.5 rounded-lg hover:bg-slate-100" title="Alerts">
+              <i class="fas fa-bell text-slate-600"></i>
+              <span id="alertBadge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] w-[18px] h-[18px] min-w-[18px] px-1 rounded-full flex items-center justify-center">0</span>
+            </button>
+            <div class="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div class="w-8 h-8 rounded-full brand-gradient flex items-center justify-center text-white text-xs font-bold" id="userAvatar">U</div>
+              <div class="text-right leading-tight">
+                <p class="text-xs font-semibold text-slate-700" id="userName">—</p>
+                <p class="text-[10px] text-slate-400 capitalize" id="userRole">—</p>
+              </div>
+            </div>
+            <button onclick="logout()" class="btn btn-outline btn-sm" title="Logout"><i class="fas fa-arrow-right-from-bracket"></i><span class="hidden sm:inline">Logout</span></button>
+          </div>
+        </div>
+      </header>
+
+      <main class="flex-1 px-4 lg:px-7 py-6 max-w-[1400px] w-full mx-auto">
+        <div id="sectionRoot"></div>
+      </main>
+
+      <footer class="text-center text-[11px] text-slate-400 py-4">Jal Kavach — Protecting people from unsafe water · Data stored securely via Firebase</footer>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL ================= -->
+<div id="modalBackdrop" class="hidden fixed inset-0 z-[70] modal-backdrop flex items-center justify-center p-4">
+  <div id="modalBox" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl">
+      <h3 id="modalTitle" class="font-bold text-slate-800">Title</h3>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 p-1"><i class="fas fa-xmark text-lg"></i></button>
+    </div>
+    <div id="modalBody" class="p-5"></div>
+  </div>
+</div>
+
+<!-- ================= TOAST ================= -->
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 translate-y-20 opacity-0 transition-all duration-300 z-[80]">
+  <div class="bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm">
+    <i class="fas fa-check-circle text-teal-400"></i>
+    <span id="toastMsg">Saved</span>
+  </div>
+</div>
+
+<div id="loadingOverlay" class="hidden fixed inset-0 bg-white/70 z-[90] flex items-center justify-center">
+  <i class="fas fa-circle-notch fa-spin text-teal-600 text-3xl"></i>
+</div>
+
+
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
